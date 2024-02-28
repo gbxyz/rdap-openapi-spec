@@ -1,0 +1,226 @@
+openapi: 3.1.0
+
+info:
+  title: Registration Data Access Protocol
+  version: "1.0"
+
+  description: |
+    This file contains a reference description of an RDAP server that conforms
+    to the following RFCs:
+
+    * [RFC 7480](https://datatracker.ietf.org/doc/html/rfc7480): HTTP Usage in the Registration Data Access Protocol (RDAP)
+    * [RFC 7481](https://datatracker.ietf.org/doc/html/rfc7481): Security Services for the Registration Data Access Protocol (RDAP)
+    * [RFC 9082](https://datatracker.ietf.org/doc/html/rfc9082): Registration Data Access Protocol (RDAP) Query Format
+    * [RFC 9083](https://datatracker.ietf.org/doc/html/rfc9083): JSON Responses for the Registration Data Access Protocol (RDAP)
+
+    This specification uses the JSON Schema files for RDAP created by Mario
+    Loffredo and Maurizio Martinelli of CNR (.it).
+
+servers:
+  - url: "{scheme}://{authority}{basePath}"
+    variables:
+      scheme:
+        enum:
+          - https
+          - http
+        default: https
+      authority:
+        default: rdap.org
+      basePath:
+        default: /
+
+paths:
+  /help:
+    get:
+      operationId: get-help
+      description: |
+        The help query can be used to request helpful information (command
+        syntax, terms of service, privacy policy, rate-limiting policy,
+        supported authentication methods, supported extensions, technical
+        support contact, etc.) from an RDAP server. The response to "help"
+        provides basic information that a client needs to successfully use the
+        service.
+      responses:
+        default:
+          description: An error occurred.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+          content:
+            "application/rdap+json":
+              schema:
+                $ref: "schemas/rdap_error.json"
+
+        '200':
+          description: The help query succeeded.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+          content:
+            "application/rdap+json":
+              schema:
+                $ref: "schemas/rdap_help.json"
+
+
+  /{type}/{handle}:
+    parameters:
+      - name: type
+        description: The object type.
+        in: path
+        required: true
+        schema:
+          enum:
+            - domain
+            - nameserver
+            - entity
+            - ip
+            - autnum
+      - name: handle
+        description: |
+          The domain/nameserver name, entity handle, IP address/prefix, AS
+          number, etc.
+        in: path
+        required: true
+        schema:
+          type: string
+
+    head:
+      operationId: check-object-exists
+      description: |
+        A simple lookup to determine if an object exists (or not) without
+        returning RDAP-encoded results can be performed using the HTTP `HEAD`
+        method as described in [Section 4.1 of RFC 7480](https://www.rfc-editor.org/rfc/rfc7480#section-4.1).
+
+      responses:
+        default:
+          description: |
+            The object does not exist (HTTP code 404), or some other error
+            occurred.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+          content:
+            "application/rdap+json":
+              schema:
+                $ref: "schemas/rdap_error.json"
+
+        '200':
+          description: The queried object exists.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+
+    get:
+      operationId: get-object
+      description: |
+        This operation retrieves the RDAP record for the specified object.
+      responses:
+        default: 
+          description: The object does not exist, or another error occurred.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+
+          content:
+            "application/rdap+json":
+              schema:
+                $ref: "schemas/rdap_error.json"
+
+        '200':
+          description: The object exists.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+
+          content:
+            "application/rdap+json":
+              schema:
+                oneOf:
+                  - $ref: "schemas/rdap_domain.json"
+                  - $ref: "schemas/rdap_nameserver.json"
+                  - $ref: "schemas/rdap_entity.json"
+                  - $ref: "schemas/rdap_ipnetwork.json"
+                  - $ref: "schemas/rdap_autnum.json"
+
+  /{searchType}:
+    parameters:
+      - name: searchType
+        description: the search type
+        in: path
+        required: true
+        schema:
+          enum:
+            - domains
+            - nameservers
+            - entities
+
+    get:
+      operationId: search
+      parameters:
+        - name: name
+          description: the domain or nameserver name
+          in: query
+          schema:
+            type: string
+            format: hostname
+        - name: nsLdhName
+          description: the name of a domain's nameserver
+          in: query
+          schema:
+            type: string
+            format: hostname
+        - name: nsIp
+          description: the IP address of a domain's nameserver
+          in: query
+          schema:
+            oneOf:
+              - format: ipv4
+              - format: ipv6
+        - name: ip
+          description: a nameserver's IP address
+          in: query
+          schema:
+            oneOf:
+              - format: ipv4
+              - format: ipv6
+        - name: fn
+          description: the "fn" property of an entity
+          in: query
+          schema:
+            type: string
+        - name: handle
+          description: the entity's handle
+          in: query
+          schema:
+            type: string
+      responses:
+        default: 
+          description: An error occurred.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+          content:
+            "application/rdap+json":
+              schema:
+                $ref: "schemas/rdap_error.json"
+
+        '200':
+          description: The search succeeded.
+          headers:
+            access-control-allow-origin:
+              schema:
+                const: "*"
+          content:
+            "application/rdap+json":
+              schema:
+                oneOf:
+                  - $ref: "schemas/rdap_domains.json"
+                  - $ref: "schemas/rdap_nameservers.json"
+                  - $ref: "schemas/rdap_entities.json"
