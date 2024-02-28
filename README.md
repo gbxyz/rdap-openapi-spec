@@ -15,3 +15,5 @@ Maurizio Martinelli of CNR (.it).
 
 This YAML file can be used with various OpenAPI code generators to generate
 RDAP client and server implementations that conform to the RDAP RFCs.
+
+[Try it out here](https://openapi.rdap.org/).
